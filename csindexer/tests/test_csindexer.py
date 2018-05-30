@@ -54,6 +54,7 @@ def test_get_small():
             else:
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_small, col_vector_small))
+            unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
@@ -67,14 +68,14 @@ def test_get_small():
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
-            unsort_idx = np.argsort(sort_idx)
             data_cy = data_cy[unsort_idx]
 
         print('\tCython time to get: %s' % t.elapsed)
 
         with Timer() as t:
-            data_py = np.squeeze(np.array(M_small[key][row_vector_small, 
-                                                       col_vector_small]))
+            data_py = np.squeeze(np.array(M_small[key][row_vector_small[sort_idx], 
+                                                       col_vector_small[sort_idx]]))
+            data_py = data_py[unsort_idx]
         print('\tPython time to get: %s' % t.elapsed)
 
         assert(np.all((data_cy - true)**2 < 1e-6))
@@ -93,6 +94,8 @@ def test_get_large():
             else:
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
+
+            unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
         with Timer() as t:
@@ -107,13 +110,13 @@ def test_get_large():
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
-            unsort_idx = np.argsort(sort_idx)
             data_cy = data_cy[unsort_idx]
 
         print('\tCython time to get: %s' % t.elapsed)
 
         with Timer() as t:
-            data_py = np.squeeze(np.array(M_large[key][row_vector_large, col_vector_large]))
+            data_py = np.squeeze(np.array(M_large[key][row_vector_large[sort_idx], col_vector_large[sort_idx]]))
+            data_py = data_py[unsort_idx]
         print('\tPython time to get: %s' % t.elapsed)
 
 
