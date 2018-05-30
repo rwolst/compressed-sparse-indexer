@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <omp.h>
 #include "indexer_c.h"
 
 void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *)) {
@@ -30,59 +31,99 @@ void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *))
         axis0 = indexer->col;
     }
 
-    // Loop over all values of our indexer
+    // Loop over all values of our indexer.
+    // Each of our threads should read the next row of a queue and then
+    // process that row themselves.
+
+    // Get where the rows start in indexer.
+    // Unfortunately requires two passes over indexer, first find total rows
+    // then find where they start.
+    int i;
+    int prev_row = -1;
+    int total_rows = 0;
+    for (i=0; i<indexer->nnz; i++) {
+        if (axis0[i] != prev_row) {
+            // We have a new row (or column).
+            total_rows += 1;
+            prev_row = axis0[i];
+        }
+    }
+    // printf("\nTotal rows: %d", total_rows);
+    // printf("\n");
+    int *row_start = malloc(total_rows*sizeof(int));
+    prev_row = -1;
+    total_rows = 0;
+    for (i=0; i<indexer->nnz; i++) {
+        if (axis0[i] != prev_row) {
+            // We have a new row (or column).
+            row_start[total_rows] = i;
+            total_rows += 1;
+            prev_row = axis0[i];
+        }
+    }
+
+
+    // Can parallelise the below for loop.
     // printf("\n\tNew indexing");
-    while (index_pointer < indexer->nnz) {
-        // If we are here we must have a new row
-        // Sparse pointer points to columns
-        sparse_pointer = M->indptr[axis0[index_pointer]];
-        // printf("\n\t\t(Index pointer, Sparse pointer): (%d, %d)", index_pointer, sparse_pointer);
+    #pragma omp parallel
+    #pragma omp for
+    for (i=0; i<total_rows; i++) {
+        process_row(row_start[i], M, indexer, f, axis0, axis1);
+    }
 
-        new_axis0 = 0;
 
-        // Now choose between incrementing index_pointer and the sparse_pointer based on what values
-        // we get.
-        while ((new_axis0 == 0) & 
-               (sparse_pointer < M->indptr[axis0[index_pointer] + 1])) {
-            /* While both the indexer and M are on the same axis
-               We begin by pointing at the top of this axis of
-               our vectors and gradually move down them. In the event of 
-               an equality we apply our function and 
-               increment the INDEXING VECTOR pointer, not the sparse
-               vector pointer, as there can be multiple values that 
-               are the same in the indexing vector but not the sparse row
-               column vector (only 1 column can appear in 1 row!). */
+    free(row_start);
+}
 
-            if (M->indices[sparse_pointer] == axis1[index_pointer]) {
-                // Apply the function to their data
-                (*f)(&(M->data[sparse_pointer]), &(indexer->data[index_pointer]));
 
-                // Only increment the index pointer
-                index_pointer += 1;
-                
-                // Check for a new axis in the COO indexer
-                if (index_pointer >= indexer->nnz) {
-                    break;
-                }
-                if (axis0[index_pointer] != axis0[index_pointer-1]) {
-                    new_axis0 = 1;
-                }
-            } else if (M->indices[sparse_pointer] > axis1[index_pointer]) {
-                // Need to increment index pointer
-                index_pointer += 1;
-                
-                // Check for a new axis in the COO indexer
-                if (index_pointer >= indexer->nnz) {
-                    break;
-                }
-                if (axis0[index_pointer] != axis0[index_pointer-1]) {
-                    new_axis0 = 1;
-                }
-            } else {
-                // Need to increment sparse pointer
-                sparse_pointer += 1;
+void process_row(int index_pointer, CS *M, COO *indexer, void (*f)(double *,
+                 double *), int *axis0, int *axis1) {
+    int sparse_pointer = M->indptr[axis0[index_pointer]];
+    // printf("\n\t\t(Index pointer, Sparse pointer): (%d, %d)", index_pointer, sparse_pointer);
+
+    int new_axis0 = 0;
+
+    // Now choose between incrementing index_pointer and the sparse_pointer based on what values
+    // we get.
+    while ((new_axis0 == 0) & 
+           (sparse_pointer < M->indptr[axis0[index_pointer] + 1])) {
+        /* While both the indexer and M are on the same axis
+           We begin by pointing at the top of this axis of
+           our vectors and gradually move down them. In the event of 
+           an equality we apply our function and 
+           increment the INDEXING VECTOR pointer, not the sparse
+           vector pointer, as there can be multiple values that 
+           are the same in the indexing vector but not the sparse row
+           column vector (only 1 column can appear in 1 row!). */
+
+        if (M->indices[sparse_pointer] == axis1[index_pointer]) {
+            // Apply the function to their data
+            (*f)(&(M->data[sparse_pointer]), &(indexer->data[index_pointer]));
+
+            // Only increment the index pointer
+            index_pointer += 1;
+            
+            // Check for a new axis in the COO indexer
+            if (index_pointer >= indexer->nnz) {
+                break;
             }
-
+            if (axis0[index_pointer] != axis0[index_pointer-1]) {
+                new_axis0 = 1;
+            }
+        } else if (M->indices[sparse_pointer] > axis1[index_pointer]) {
+            // Need to increment index pointer
+            index_pointer += 1;
+            
+            // Check for a new axis in the COO indexer
+            if (index_pointer >= indexer->nnz) {
+                break;
+            }
+            if (axis0[index_pointer] != axis0[index_pointer-1]) {
+                new_axis0 = 1;
+            }
+        } else {
+            // Need to increment sparse pointer
+            sparse_pointer += 1;
         }
     }
 }
