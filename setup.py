@@ -12,6 +12,7 @@ ext_modules += [
             sources=["./csindexer/indexer.pyx",
                      "./csindexer/indexer_c.c"],
             include_dirs=[numpy.get_include()],
+            extra_compile_args=["-O3", "-ffast-math", "-march=native"],
             language='c',
             libraries=[]
             )

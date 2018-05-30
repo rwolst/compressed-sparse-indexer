@@ -58,11 +58,13 @@ def test_get_small():
         
         with Timer() as t:
             data_cy = np.empty(row_vector_small.size, dtype=np.float64)
+            start = t.elapsed
             indexer.apply(M_small[key], 
                           row_vector_small[sort_idx], 
                           col_vector_small[sort_idx],
                           data_cy,
                           'get')
+            print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
             unsort_idx = np.argsort(sort_idx)
@@ -92,14 +94,17 @@ def test_get_large():
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
         print('\tLexsort time: %s' % t.elapsed)
-        
+
         with Timer() as t:
             data_cy = np.empty(row_vector_large.size, dtype=np.float64)
+
+            start = t.elapsed
             indexer.apply(M_large[key], 
                           np.array(row_vector_large[sort_idx]), 
                           np.array(col_vector_large[sort_idx]),
                           data_cy,
                           'get')
+            print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
             unsort_idx = np.argsort(sort_idx)
@@ -113,6 +118,7 @@ def test_get_large():
 
 
     assert(np.all((data_cy - data_py)**2 < 1e-6))
+
 
 def test_add_small():
     print('\nAdd small:')
@@ -135,11 +141,13 @@ def test_add_small():
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
+            start = t.elapsed
             indexer.apply(M_copy_cy, 
                           row_vector_small[sort_idx], 
                           col_vector_small[sort_idx],
                           data_vector_small[sort_idx],
                           'add')
+            print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
 
@@ -180,11 +188,13 @@ def test_add_large():
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
+            start = t.elapsed
             indexer.apply(M_copy_cy, 
                           row_vector_large[sort_idx], 
                           col_vector_large[sort_idx],
                           data_vector_large[sort_idx],
                           'add')
+            print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
 

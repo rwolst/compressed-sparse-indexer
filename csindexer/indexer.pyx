@@ -1,5 +1,6 @@
 import numpy as np
 cimport numpy as np
+from contexttimer import Timer
 
 cdef extern from 'indexer_c.h':
     ctypedef struct CS:
@@ -39,37 +40,40 @@ def apply(M,
     would be ok.
     If M is a CSC matrix, then indices must be ordered by
     precedence (column, row)."""
-    assert(row_vector.size == col_vector.size)
-    assert(row_vector.size == data_vector.size)
     cdef np.int32_t N = row_vector.size
-
-    # Build the CS and COO structures
     cdef CS M_CS
-    if M.getformat() == 'csr':
-        M_CS.CSR = 1
-        M_CS.n_indptr = M.shape[0] + 1
-    elif M.getformat() == 'csc':
-        M_CS.CSR = 0
-        M_CS.n_indptr = M.shape[1] + 1
-    else:
-        raise Exception('Sparse format %s not csr or csc' % M.getformat())
-
-    # Get a C view on Python objects so we can take address
     cdef np.int32_t[:] indptr  = M.indptr
     cdef np.int32_t[:] indices = M.indices
     cdef np.float64_t[:] data  = M.data
-    M_CS.indptr  = <int *> &(indptr[0])
-    M_CS.indices = <int *> &(indices[0])
-    M_CS.data    = <double *> &(data[0])
-
     cdef COO indexer
-    indexer.row = <int *> &(row_vector[0]) 
-    indexer.col = <int *> &(col_vector[0]) 
-    indexer.data = <double *> &(data_vector[0])
-    indexer.nnz = N
 
-    # Run our function with the get method
-    if operation == 'get':
-        compressed_sparse_index(&M_CS, &indexer, get)
-    if operation == 'add':
-        compressed_sparse_index(&M_CS, &indexer, add)
+    with Timer() as t:
+        assert(row_vector.size == col_vector.size)
+        assert(row_vector.size == data_vector.size)
+
+        # Build the CS and COO structures
+        if M.getformat() == 'csr':
+            M_CS.CSR = 1
+            M_CS.n_indptr = M.shape[0] + 1
+        elif M.getformat() == 'csc':
+            M_CS.CSR = 0
+            M_CS.n_indptr = M.shape[1] + 1
+        else:
+            raise Exception('Sparse format %s not csr or csc' % M.getformat())
+
+        # Get a C view on Python objects so we can take address
+        M_CS.indptr  = <int *> &(indptr[0])
+        M_CS.indices = <int *> &(indices[0])
+        M_CS.data    = <double *> &(data[0])
+
+        indexer.row = <int *> &(row_vector[0]) 
+        indexer.col = <int *> &(col_vector[0]) 
+        indexer.data = <double *> &(data_vector[0])
+        indexer.nnz = N
+
+        # Run our function with the get or add method
+        if operation == 'get':
+            compressed_sparse_index(&M_CS, &indexer, get)
+        if operation == 'add':
+            compressed_sparse_index(&M_CS, &indexer, add)
+    print("\tCython internal time: %s" % t.elapsed)
