@@ -25,7 +25,7 @@ int weighted_binary_split(int *x, int start_limit, int start_idx, int end_idx,
 
     // Catch the case where end == start (causing divide by 0 below).
     if (end - start == 0) {
-        return 0;
+        return start_idx;
     }
 
     // Catch the case where val == start (can just return start_idx).
@@ -116,8 +116,7 @@ void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *))
                                     M->indptr[axis0[index_pointer]],
                                     M->indptr[axis0[index_pointer]+1]-1,
                                     axis1[index_pointer],
-                                    &depth) +
-              M->indptr[axis0[index_pointer]];
+                                    &depth);
 
         // Now apply our function at the correct index.
         (*f)(&(M->data[idx]), &(indexer->data[index_pointer]));
@@ -398,8 +397,8 @@ int example_split_equal() {
 }
 
 int main() {
-    example_get();
-    // example_add();
+    //example_get();
+    example_add();
     //example_split_perfect();
     //example_split_ugly();
     //example_split_ugly2();
