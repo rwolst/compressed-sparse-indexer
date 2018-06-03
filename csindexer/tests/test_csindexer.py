@@ -6,6 +6,8 @@ from contexttimer import Timer
 
 from csindexer import indexer
 
+SEARCH_TYPE = 'binary'
+
 # Build small matrix
 matrix = [[ 0.  ,  0.  ,  0.45],
           [ 0.22,  0.74,  0.87],
@@ -54,6 +56,9 @@ def test_get_small():
             else:
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_small, col_vector_small))
+
+            # Technically don;t need to sort with binary search.
+            sort_idx = np.arange(row_vector_small.size)
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
         
@@ -64,7 +69,8 @@ def test_get_small():
                           row_vector_small[sort_idx], 
                           col_vector_small[sort_idx],
                           data_cy,
-                          'get')
+                          'get',
+                          SEARCH_TYPE)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -95,6 +101,8 @@ def test_get_large():
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
 
+            # Technically don;t need to sort with binary search.
+            sort_idx = np.arange(row_vector_large.size)
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
@@ -106,7 +114,8 @@ def test_get_large():
                           np.array(row_vector_large[sort_idx]), 
                           np.array(col_vector_large[sort_idx]),
                           data_cy,
-                          'get')
+                          'get',
+                          SEARCH_TYPE)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -141,6 +150,8 @@ def test_add_small():
             else:
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_small, col_vector_small))
+            # Technically don;t need to sort with binary search.
+            sort_idx = np.arange(row_vector_small.size)
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
@@ -149,7 +160,8 @@ def test_add_small():
                           row_vector_small[sort_idx], 
                           col_vector_small[sort_idx],
                           data_vector_small[sort_idx],
-                          'add')
+                          'add',
+                          SEARCH_TYPE)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
@@ -188,6 +200,8 @@ def test_add_large():
             else:
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
+            # Technically don;t need to sort with binary search.
+            sort_idx = np.arange(row_vector_large.size)
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
@@ -196,7 +210,8 @@ def test_add_large():
                           row_vector_large[sort_idx], 
                           col_vector_large[sort_idx],
                           data_vector_large[sort_idx],
-                          'add')
+                          'add',
+                          SEARCH_TYPE)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)

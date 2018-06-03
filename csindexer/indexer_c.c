@@ -1,76 +1,54 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "indexer_c.h"
+#include "interpolation_search.h"
 
+int get_first_occurence(int arr[], int n, int x, int *depth, int search_type) {
+    // Use a binary or interpolation search to get the first occurence of a
+    // value `x` in an array `arr` of size `n`. The search used can be either
+    //     search_type:
+    //         0: Binary search.
+    //         1: Interpolation search.
 
-int weighted_binary_split(int *x, int start_limit, int start_idx, int end_idx,
-                          int val, int *depth) {
-    // For a vector of length `n` with known starting and ending values,
-    //     x[start_idx:end_idx+1] = [start, ..., end]
-    // searches for `val` in `x`, assuming `x` is uniformly distributed and
-    // ordered. Note that we always get the first occurence of `val` in `x`.
-    // I say 'best' because it is simply intuition.
-    // Note that when initially calling this, we will have
-    //     start_limit = start_idx
-    // however when we are within the recursion this is no longer the case.
-    int n = end_idx - start_idx + 1;
-    int start = x[start_idx];
-    int end = x[end_idx];
-    int out;
+    int idx;
+    switch (search_type) {
+        case 0:
+            idx = binarySearch(arr, n, x, depth);
+            break;
+
+        case 1:
+            idx = interpolationSearch(arr, n, x, depth);
+            break;
+    }
+
+    // Handle the case where the idx is not found.
+    if (idx == -1) {
+        printf("\nValue not found in array in get_first_occurence.\n");
+        return -1;
+    }
+
+    // Now find the first occurence in the array.
     int i;
-
-    // Keep track of how many iterations/depth we have gone in binary search
-    // tree.
-    *depth += 1;
-
-    // Catch the case where end == start (causing divide by 0 below).
-    if (end - start == 0) {
-        return start_idx;
-    }
-
-    // Catch the case where val == start (can just return start_idx).
-    if (val == start) {
-        return start_idx;
-    }
-
-    // We want to find
-    //     (val - start)/((end - start)/n) = n*val/(end - start),
-    // rounded to the nearest integer.
-    // Note there is no point using
-    //     1) idx = start_idx 
-    //        as if val == x[start_idx] ==> val == start, caught above.
-    //     2) idx = start_idx + n = end_idx + 1, too big for vector.
-    // Hence we use (n - 1).
-    int idx = start_idx + ((n-1)*(val - start))/(end - start);
-    if (idx == start_idx) {
-        idx += 1;
-    }
-
-    if (x[idx] > val) {
-        // Search again with idx as the new `end_idx`.
-        out = weighted_binary_split(x, start_limit, start_idx, idx, val, depth);
-    } else if (x[idx] < val) {
-        // Search again with idx as the new `start_idx`.
-        out = weighted_binary_split(x, start_limit, idx, end_idx, val, depth);
+    if (idx == 0) {
+        // First value must of course be 0.
+        return 0;
     } else {
-        // In this case we have found val in x at x[idx].
-        // We finally get the first occurence of `val` in x[start_limit:idx+1].
-        for (i=1; i<idx-start_limit+1; i++) {
-            if (x[idx - i] != x[idx]) {
+        // Search backwards through arr until we have a value not equal to
+        // arr[idx].
+        for (i=1; i<idx+1; i++) {
+            if (arr[idx - i] != arr[idx]) {
                 // We have found our first value!
                 return idx - i + 1;
             }
         }
 
-        // If we reach this point, then x[start_limit] was the first value.
-        return start_limit;
+        // If we reach this point then again the first value is at 0.
+        return 0;
     }
-
-    return out;
 }
 
-
-void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *)) {
+void compressed_sparse_index(CS *M, COO *indexer,
+                             void (*f)(double *, double *), int search_type) {
     /*
     Note we can maybe split the indexer into separate chunks and
     perform our operations in parallel over the chunks.
@@ -81,11 +59,12 @@ void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *))
                if M is CSR it is assumed to be ordered by (column, row).
         f: A function taking f(&M->data[x], &index->data[y]) and applies something to them.
     */
-    int new_axis0;
-    int sparse_pointer;
     int index_pointer = 0;
     int idx;
-    int depth = 0;
+    int depth;
+    int start;
+    int n;
+    int x;
 
     int *axis0;
     int *axis1;
@@ -111,15 +90,13 @@ void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *))
         // If we can guarantee all values in indexer exist in M then we can
         // use our binary search for the current column value
         //     axis1[index_pointer].
-        idx = weighted_binary_split(M->indices,
-                                    M->indptr[axis0[index_pointer]],
-                                    M->indptr[axis0[index_pointer]],
-                                    M->indptr[axis0[index_pointer]+1]-1,
-                                    axis1[index_pointer],
-                                    &depth);
+        start = M->indptr[axis0[index_pointer]];
+        n = M->indptr[axis0[index_pointer]+1] - start;
+        x = axis1[index_pointer];
+        idx = get_first_occurence(&M->indices[start], n, x, &depth, search_type);
 
         // Now apply our function at the correct index.
-        (*f)(&(M->data[idx]), &(indexer->data[index_pointer]));
+        (*f)(&(M->data[start+idx]), &(indexer->data[index_pointer]));
         index_pointer += 1;
     }
 }
@@ -143,7 +120,8 @@ void add(double *x, double *y) {
 int example_get() {
     // A small example to check we can get from a CS matrix
     int i;
-    
+    int search_type = 0;
+
     // Use M = [[ 0.  ,  0.  ,  0.45],
     //          [ 0.22,  0.74,  0.87],
     //          [ 0   ,  0   ,  0   ]
@@ -195,7 +173,7 @@ int example_get() {
     indexer.row[5] = 4; indexer.col[5] = 1;
     indexer.row[6] = 4; indexer.col[6] = 1;
 
-    compressed_sparse_index(&M, &indexer, get);
+    compressed_sparse_index(&M, &indexer, get, search_type);
 
     for (i=0; i<7; i++) {
         printf("\nindexer.data[%d] = %g", i, indexer.data[i]);
@@ -214,6 +192,7 @@ int example_get() {
 int example_add() {
     // A small example to check we can get from a CS matrix
     int i;
+    int search_type = 0;
 
     // Use M = [[ 0.1  ,  0.2  ,  0.3],
     //          [ 0.4  ,  0.5  ,  0.6],
@@ -253,7 +232,7 @@ int example_add() {
     indexer.row[0] = 1; indexer.col[0] = 2; indexer.data[0] = 0.5;
     indexer.row[1] = 2; indexer.col[1] = 2; indexer.data[1] = 1.5;
 
-    compressed_sparse_index(&M, &indexer, add);
+    compressed_sparse_index(&M, &indexer, add, search_type);
 
     for (i=0; i<9; i++) {
         printf("\nM.data[%d] = %g", i, M.data[i]);
@@ -270,135 +249,10 @@ int example_add() {
 }
 
 
-int example_split_perfect() {
-    // Test that our weigted binary split works correctly for perfectly uniform
-    // vector x (i.e. should only ever need depth == 1).
-    int x[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    int start_idx = 0;
-    int end_idx = 9;
-    int val = 3;
-    int idx;
-    int i;
-    int depth = 0;
-
-    idx = weighted_binary_split(x, start_idx, start_idx, end_idx, val, &depth);
-    printf("\nFirst index into:\n\tx = (");
-    for (i=0; i<10; i++) {
-        printf("%d,", x[i]);
-    }
-    printf(")");
-    printf("\nfor:\n\tval = %d", val);
-    printf("\nis\n\tidx = %d", idx);
-    printf("\nwith\n\tx[idx]=%d", x[idx]);
-    printf("\nat\n\tdepth=%d\n", depth);
-
-    return 0;
-}
-
-
-int example_split_ugly() {
-    // Test that our weigted binary split works correctly for far from uniform
-    // vector x (i.e. depth should be near linear).
-    int x[10] = {0, 10001, 10002, 10003, 10004, 10005, 10006, 10007, 10008, 10009};
-    int start_idx = 0;
-    int end_idx = 9;
-    int val = 10001;
-    int idx;
-    int i;
-    int depth = 0;
-
-    idx = weighted_binary_split(x, start_idx, start_idx, end_idx, val, &depth);
-    printf("\nFirst index into:\n\tx = (");
-    for (i=0; i<10; i++) {
-        printf("%d,", x[i]);
-    }
-    printf(")");
-    printf("\nfor:\n\tval = %d", val);
-    printf("\nis\n\tidx = %d", idx);
-    printf("\nwith\n\tx[idx]=%d", x[idx]);
-    printf("\nat\n\tdepth=%d\n", depth);
-
-    return 0;
-}
-
-int example_split_ugly2() {
-    // Test that our weigted binary split works correctly for far from uniform
-    // vector x (i.e. depth should be near linear).
-    int x[10] = {1, 2, 2, 2, 2, 2, 2, 2, 2, 1000};
-    int start_idx = 0;
-    int end_idx = 9;
-    int val = 1;
-    int idx;
-    int i;
-    int depth = 0;
-
-    idx = weighted_binary_split(x, start_idx, start_idx, end_idx, val, &depth);
-    printf("\nFirst index into:\n\tx = (");
-    for (i=0; i<10; i++) {
-        printf("%d,", x[i]);
-    }
-    printf(")");
-    printf("\nfor:\n\tval = %d", val);
-    printf("\nis\n\tidx = %d", idx);
-    printf("\nwith\n\tx[idx]=%d", x[idx]);
-    printf("\nat\n\tdepth=%d\n", depth);
-
-    return 0;
-}
-
-int example_split_multiple() {
-    // Test that our weigted binary split works correctly for multiple values
-    // in vector x (i.e. finds the first value).
-    int x[10] = {0, 2, 2, 4, 4, 5, 5, 5, 6, 6};
-    int start_idx = 0;
-    int end_idx = 9;
-    int val = 6;
-    int idx;
-    int i;
-    int depth = 0;
-
-    idx = weighted_binary_split(x, start_idx, start_idx, end_idx, val, &depth);
-    printf("\nFirst index into:\n\tx = (");
-    for (i=0; i<10; i++) {
-        printf("%d,", x[i]);
-    }
-    printf(")");
-    printf("\nfor:\n\tval = %d", val);
-    printf("\nis\n\tidx = %d", idx);
-    printf("\nwith\n\tx[idx]=%d", x[idx]);
-    printf("\nat\n\tdepth=%d\n", depth);
-
-    return 0;
-}
-
-int example_split_equal() {
-    // Test that our weigted binary split works correctly for equal values
-    // in vector x (i.e. finds the first value).
-    int x[10] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2};
-    int start_idx = 0;
-    int end_idx = 9;
-    int val = 2;
-    int idx;
-    int i;
-    int depth = 0;
-
-    idx = weighted_binary_split(x, start_idx, start_idx, end_idx, val, &depth);
-    printf("\nFirst index into:\n\tx = (");
-    for (i=0; i<10; i++) {
-        printf("%d,", x[i]);
-    }
-    printf(")");
-    printf("\nfor:\n\tval = %d", val);
-    printf("\nis\n\tidx = %d", idx);
-    printf("\nwith\n\tx[idx]=%d", x[idx]);
-    printf("\nat\n\tdepth=%d\n", depth);
-
-    return 0;
-}
 
 int main() {
-    //example_get();
-    example_add();
+    example_get();
+    //example_add();
     //example_split_perfect();
     //example_split_ugly();
     //example_split_ugly2();
