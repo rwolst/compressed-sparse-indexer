@@ -14,6 +14,7 @@ ext_modules += [
                      "./csindexer/interpolation_search.c"],
             include_dirs=[numpy.get_include()],
             extra_compile_args=["-O3", "-ffast-math", "-march=native"],
+            extra_link_args=["-fopenmp"],
             language='c',
             libraries=[]
             )

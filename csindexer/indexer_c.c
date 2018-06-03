@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <omp.h>
 #include "indexer_c.h"
 #include "interpolation_search.h"
 
@@ -81,7 +82,8 @@ void compressed_sparse_index(CS *M, COO *indexer,
 
     // Loop over all values of our indexer
     // printf("\n\tNew indexing");
-    while (index_pointer < indexer->nnz) {
+    // #pragma omp parallel for
+    for (index_pointer=0; index_pointer<indexer->nnz; index_pointer++) {
         // If we are here we must have a new row
         // Sparse pointer points to columns
         // sparse_pointer = M->indptr[axis0[index_pointer]];
@@ -97,7 +99,6 @@ void compressed_sparse_index(CS *M, COO *indexer,
 
         // Now apply our function at the correct index.
         (*f)(&(M->data[start+idx]), &(indexer->data[index_pointer]));
-        index_pointer += 1;
     }
 }
 

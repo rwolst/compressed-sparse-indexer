@@ -7,6 +7,7 @@ from contexttimer import Timer
 from csindexer import indexer
 
 SEARCH_TYPE = 'binary'
+SORT = True
 
 # Build small matrix
 matrix = [[ 0.  ,  0.  ,  0.45],
@@ -58,7 +59,8 @@ def test_get_small():
                 sort_idx = np.lexsort((row_vector_small, col_vector_small))
 
             # Technically don;t need to sort with binary search.
-            sort_idx = np.arange(row_vector_small.size)
+            if not SORT:
+                sort_idx = np.arange(row_vector_small.size)
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
         
@@ -102,7 +104,8 @@ def test_get_large():
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
 
             # Technically don;t need to sort with binary search.
-            sort_idx = np.arange(row_vector_large.size)
+            if not SORT:
+                sort_idx = np.arange(row_vector_small.size)
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
@@ -151,7 +154,8 @@ def test_add_small():
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_small, col_vector_small))
             # Technically don;t need to sort with binary search.
-            sort_idx = np.arange(row_vector_small.size)
+            if not SORT:
+                sort_idx = np.arange(row_vector_small.size)
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
@@ -186,6 +190,7 @@ def test_add_small():
         assert(np.all((M_copy_cy.data - true[key])**2 < 1e-6))
         assert(np.all((M_copy_py.data - true[key])**2 < 1e-6))
 
+
 def test_add_large():
     print('\nAdd large:')
     for key in M_small:
@@ -201,7 +206,8 @@ def test_add_large():
                 # Sort indices according to col first
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
             # Technically don;t need to sort with binary search.
-            sort_idx = np.arange(row_vector_large.size)
+            if not SORT:
+                sort_idx = np.arange(row_vector_small.size)
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
