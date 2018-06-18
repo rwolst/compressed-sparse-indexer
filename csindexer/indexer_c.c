@@ -21,6 +21,10 @@ int get_first_occurence(int arr[], int n, int x, int *depth, int search_type) {
         case 1:
             idx = interpolationSearch(arr, n, x, depth);
             break;
+
+        case 2:
+            idx = jointSearch(arr, n, x, depth);
+            break;
     }
 
     // Handle the case where the idx is not found.
@@ -328,7 +332,7 @@ int python_debugger() {
     M.data = arr;
 
     // Run the program.
-    compressed_sparse_index(&M, &indexer, get, 1);
+    compressed_sparse_index(&M, &indexer, get, 2);
 
     // Free indexer.
     free(indexer.row);

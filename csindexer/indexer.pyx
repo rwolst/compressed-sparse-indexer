@@ -63,6 +63,8 @@ def apply(M,
             search_type_int = 0
         elif search_type == 'interpolation':
             search_type_int = 1
+        elif search_type == 'joint':
+            search_type_int = 2
         else:
             raise Exception("Unrecognised search_type: %s" % search_type)
 

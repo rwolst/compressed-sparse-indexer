@@ -6,7 +6,8 @@
 // index of it, else returns -1.
 int interpolationSearch(int arr[], int n, int x, int *depth) {
     // Find indexes of two corners
-    int lo = 0, hi = (n - 1);
+    int lo = 0;
+    int hi = n - 1;
 
     // With the case where lo and hi are equal.
     // If x is equal to them, then all is good.
@@ -82,6 +83,61 @@ int binarySearch(int arr[], int n, int x, int *depth) {
 
     // if we reach here, then element was
     // not present
+    return -1;
+}
+
+// C program to implement joint interpolation and binary search.
+// If x is present in arr[0..n-1], then returns
+// index of it, else returns -1.
+int jointSearch(int arr[], int n, int x, int *depth) {
+    // Find indexes of two corners
+    int lo = 0;
+    int hi = n - 1;
+
+    // With the case where lo and hi are equal.
+    // If x is equal to them, then all is good.
+    if (lo == hi) {
+        if (x == arr[lo])
+            return 0;
+        else
+            return -1;
+    }
+
+    // Since array is sorted, an element present
+    // in array must be in range defined by corner
+    *depth = 0;
+    int pos;
+    while (lo <= hi && x >= arr[lo] && x <= arr[hi])
+    {
+        *depth += 1;
+
+        // On odds depths use interpolation (i.e. first) and even binary.
+        if (*depth % 2 == 1) {
+            // Probing the position with keeping
+            // uniform distribution in mind.
+            if (hi == lo) {
+                // Avoid a division by 0 here.
+                pos = lo;
+            } else {
+                pos = lo + (((double)(hi-lo) /
+                      (arr[hi]-arr[lo]))*(x - arr[lo]));
+            }
+        } else {
+            pos = lo + (hi-lo)/2;
+        }
+
+        // Condition of target found
+        if (arr[pos] == x)
+            return pos;
+
+        // If x is larger, x is in upper part
+        if (arr[pos] < x)
+            lo = pos + 1;
+
+        // If x is smaller, x is in the lower part
+        else
+            hi = pos - 1;
+    }
     return -1;
 }
 
