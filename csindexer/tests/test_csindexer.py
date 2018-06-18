@@ -7,7 +7,7 @@ from contexttimer import Timer
 from csindexer import indexer
 
 SEARCH_TYPE = 'binary'
-SORT = True
+SORT = False
 
 # Build small matrix
 matrix = [[ 0.  ,  0.  ,  0.45],
@@ -28,14 +28,14 @@ data_vector_small = np.array([1, 1, 1, 1, 1, 1, 1], dtype=np.float64)
 
 
 # Build large matrix
-matrix = sp.sparse.rand(40000, 40000, density=0.001)
+matrix = sp.sparse.rand(40000, 40000, density=0.01)
 
 M_large = {}
 M_large['CSR'] = sp.sparse.csr_matrix(matrix)
 M_large['CSC'] = sp.sparse.csc_matrix(matrix)
 
 # Indices must be a choice of the indices in matrix
-idx = np.random.choice(matrix.nnz, 1000000, replace=True)
+idx = np.random.choice(matrix.nnz, 1500000, replace=True)
 row_vector_large = matrix.row[idx]
 col_vector_large = matrix.col[idx]
 indices_large = np.concatenate([row_vector_large[:, None], 
@@ -105,7 +105,7 @@ def test_get_large():
 
             # Technically don;t need to sort with binary search.
             if not SORT:
-                sort_idx = np.arange(row_vector_small.size)
+                sort_idx = np.arange(row_vector_large.size)
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
@@ -207,7 +207,7 @@ def test_add_large():
                 sort_idx = np.lexsort((row_vector_large, col_vector_large))
             # Technically don;t need to sort with binary search.
             if not SORT:
-                sort_idx = np.arange(row_vector_small.size)
+                sort_idx = np.arange(row_vector_large.size)
         print('\tLexsort time: %s' % t.elapsed)
         
         with Timer() as t:
