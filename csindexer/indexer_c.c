@@ -3,6 +3,7 @@
 #include <omp.h>
 #include "indexer_c.h"
 #include "interpolation_search.h"
+#include "csv.h"
 
 int get_first_occurence(int arr[], int n, int x, int *depth, int search_type) {
     // Use a binary or interpolation search to get the first occurence of a
@@ -84,11 +85,6 @@ void compressed_sparse_index(CS *M, COO *indexer,
     // printf("\n\tNew indexing");
     // #pragma omp parallel for
     for (index_pointer=0; index_pointer<indexer->nnz; index_pointer++) {
-        // If we are here we must have a new row
-        // Sparse pointer points to columns
-        // sparse_pointer = M->indptr[axis0[index_pointer]];
-        // printf("\n\t\t(Index pointer, Sparse pointer): (%d, %d)", index_pointer, sparse_pointer);
-
         // If we can guarantee all values in indexer exist in M then we can
         // use our binary search for the current column value
         //     axis1[index_pointer].
@@ -250,9 +246,104 @@ int example_add() {
 }
 
 
+int python_debugger() {
+    // A function for testing the C code especially when we get seg faults in
+    // Python.
+
+    // Load the CSV files and store in correct objects.
+    int i, rows, cols;
+    char fname[128];
+
+    // Index object.
+    COO indexer;
+
+    //     row_vec
+    strcpy(fname, "tests/data/row_vec.csv");
+    double *arr = getcsv(fname, 0, &rows, &cols);
+
+    // Convert to integers.
+    int *arr_int = malloc(rows*sizeof(int));
+    for (i = 0; i < rows; i++) {
+        arr_int[i] = (int) arr[i];
+    }
+    free(arr);
+
+    indexer.row = arr_int;
+
+    //     col_vec
+    strcpy(fname, "tests/data/col_vec.csv");
+    arr = getcsv(fname, 0, &rows, &cols);
+
+    // Convert to integers.
+    arr_int = malloc(rows*sizeof(int));
+    for (i = 0; i < rows; i++) {
+        arr_int[i] = (int) arr[i];
+    }
+    free(arr);
+
+    indexer.col = arr_int;
+
+    //     data
+    strcpy(fname, "tests/data/col_vec.csv");
+    arr = getcsv(fname, 0, &rows, &cols);
+    indexer.data = arr;
+
+    indexer.nnz = rows;
+
+    // CSR object.
+    CS M;
+    M.CSR = 1;
+
+    //     indptr
+    strcpy(fname, "tests/data/indptr.csv");
+    arr = getcsv(fname, 0, &rows, &cols);
+
+    // Convert to integers.
+    arr_int = malloc(rows*sizeof(int));
+    for (i = 0; i < rows; i++) {
+        arr_int[i] = (int) arr[i];
+    }
+    free(arr);
+
+    M.indptr = arr_int;
+    M.n_indptr = rows;
+
+    //     indices
+    strcpy(fname, "tests/data/indices.csv");
+    arr = getcsv(fname, 0, &rows, &cols);
+
+    // Convert to integers.
+    arr_int = malloc(rows*sizeof(int));
+    for (i = 0; i < rows; i++) {
+        arr_int[i] = (int) arr[i];
+    }
+    free(arr);
+
+    M.indices = arr_int;
+
+    //     data
+    strcpy(fname, "tests/data/data.csv");
+    arr = getcsv(fname, 0, &rows, &cols);
+
+    M.data = arr;
+
+    // Run the program.
+    compressed_sparse_index(&M, &indexer, get, 1);
+
+    // Free indexer.
+    free(indexer.row);
+    free(indexer.col);
+    free(indexer.data);
+
+    // Free CSR.
+    free(M.indptr);
+    free(M.indices);
+    free(M.data);
+}
 
 int main() {
-    example_get();
+    python_debugger();
+    //example_get();
     //example_add();
     //example_split_perfect();
     //example_split_ugly();

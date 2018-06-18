@@ -1,7 +1,7 @@
+#include <stdio.h>
+
 // C program to implement interpolation search.
 //     https://www.geeksforgeeks.org/interpolation-search
-#include<stdio.h>
-
 // If x is present in arr[0..n-1], then returns
 // index of it, else returns -1.
 int interpolationSearch(int arr[], int n, int x, int *depth) {
@@ -26,8 +26,14 @@ int interpolationSearch(int arr[], int n, int x, int *depth) {
 
         // Probing the position with keeping
         // uniform distribution in mind.
-        int pos = lo + (((double)(hi-lo) /
-              (arr[hi]-arr[lo]))*(x - arr[lo]));
+        int pos;
+        if (hi == lo) {
+            // Avoid a division by 0 here.
+            pos = lo;
+        } else {
+            pos = lo + (((double)(hi-lo) /
+                  (arr[hi]-arr[lo]))*(x - arr[lo]));
+        }
 
         // Condition of target found
         if (arr[pos] == x)
@@ -50,28 +56,28 @@ int interpolationSearch(int arr[], int n, int x, int *depth) {
 // location of x in given array arr[l..r] if present,
 // otherwise -1
 int binarySearch(int arr[], int n, int x, int *depth) {
-    int l = 0;
-    int r = n-1;
+    int lo = 0;
+    int hi = n-1;
 
     *depth = 0;
-    while (l <= r)
+    while (lo <= hi)
     {
         *depth += 1;
 
         // Get middle index.
-        int m = l + (r-l)/2;
+        int pos = lo + (hi-lo)/2;
 
         // Check if x is present at mid.
-        if (arr[m] == x)
-            return m;
+        if (arr[pos] == x)
+            return pos;
 
         // If x greater, ignore left half.
-        if (arr[m] < x)
-            l = m + 1;
+        if (arr[pos] < x)
+            lo = pos + 1;
 
         // If x is smaller, ignore right half.
         else
-            r = m - 1;
+            hi = pos - 1;
     }
 
     // if we reach here, then element was

@@ -8,6 +8,7 @@ from csindexer import indexer
 
 SEARCH_TYPE = 'binary'
 SORT = False
+DEBUG = True  # Saves the large objects to csv for testing in C.
 
 # Build small matrix
 matrix = [[ 0.  ,  0.  ,  0.45],
@@ -28,25 +29,38 @@ data_vector_small = np.array([1, 1, 1, 1, 1, 1, 1], dtype=np.float64)
 
 
 # Build large matrix
-matrix = sp.sparse.rand(40000, 40000, density=0.01)
+matrix = sp.sparse.rand(100000, 100000, density=0.001)
 
 M_large = {}
 M_large['CSR'] = sp.sparse.csr_matrix(matrix)
 M_large['CSC'] = sp.sparse.csc_matrix(matrix)
 
 # Indices must be a choice of the indices in matrix
-idx = np.random.choice(matrix.nnz, 1500000, replace=True)
+idx = np.random.choice(matrix.nnz, 1000000, replace=True)
 row_vector_large = matrix.row[idx]
 col_vector_large = matrix.col[idx]
-indices_large = np.concatenate([row_vector_large[:, None], 
+indices_large = np.concatenate([row_vector_large[:, None],
                                 col_vector_large[:, None]], axis=1)
 data_vector_large = np.random.rand(idx.size).astype(np.float64)
+
+if DEBUG:
+    # Save the CSR matrix.
+    data_dir = "csindexer/tests/data/"
+    np.savetxt(data_dir + "data.csv", M_large['CSR'].data, delimiter=",")
+    np.savetxt(data_dir + "indices.csv", M_large['CSR'].indices, delimiter=",")
+    np.savetxt(data_dir + "indptr.csv", M_large['CSR'].indptr, delimiter=",")
+
+    # Save the indexing objects.
+    np.savetxt(data_dir + "row_vec.csv", row_vector_large, delimiter=",")
+    np.savetxt(data_dir + "col_vec.csv", col_vector_large, delimiter=",")
+    np.savetxt(data_dir + "data_vec.csv", data_vector_large, delimiter=",")
+
 
 
 def test_get_small():
     print('\nGet small:')
     true = np.array([0.45, 0.45, 0.22, 0.74, 0.93, 0.93, 0.93])
-    
+
     for key in M_small:
         print('\n%s matrix' % key)
 
