@@ -3,7 +3,8 @@
 #include <omp.h>
 #include "indexer_c.h"
 
-void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *)) {
+void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *),
+                             int n_threads) {
     /*
     Note we can maybe split the indexer into separate chunks and
     perform our operations in parallel over the chunks.
@@ -65,7 +66,7 @@ void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *))
 
     // Can parallelise the below for loop.
     // printf("\n\tNew indexing");
-    omp_set_num_threads(8);
+    omp_set_num_threads(n_threads);
     #pragma omp parallel for
     for (i=0; i<total_rows; i++) {
         process_row(row_start[i], M, indexer, f, axis0, axis1);
@@ -147,7 +148,8 @@ void add(double *x, double *y) {
 int example_get() {
     // A small example to check we can get from a CS matrix
     int i;
-    
+    int n_threads = 1;
+
     // Use M = [[ 0.  ,  0.  ,  0.45],
     //          [ 0.22,  0.74,  0.87],
     //          [ 0   ,  0   ,  0   ]
@@ -199,7 +201,7 @@ int example_get() {
     indexer.row[5] = 4; indexer.col[5] = 1;
     indexer.row[6] = 4; indexer.col[6] = 1;
 
-    compressed_sparse_index(&M, &indexer, get);
+    compressed_sparse_index(&M, &indexer, get, n_threads);
 
     for (i=0; i<7; i++) {
         printf("\nindexer.data[%d] = %g", i, indexer.data[i]);
@@ -218,7 +220,8 @@ int example_get() {
 int example_add() {
     // A small example to check we can get from a CS matrix
     int i;
-    
+    int n_threads = 1;
+
     // Use M = [[ 0.1  ,  0.2  ,  0.3],
     //          [ 0.4  ,  0.5  ,  0.6],
     //          [ 0.7  ,  0.8  ,  0.9]]
@@ -257,7 +260,7 @@ int example_add() {
     indexer.row[0] = 1; indexer.col[0] = 2; indexer.data[0] = 0.5;
     indexer.row[1] = 2; indexer.col[1] = 2; indexer.data[1] = 1.5;
 
-    compressed_sparse_index(&M, &indexer, add);
+    compressed_sparse_index(&M, &indexer, add, n_threads);
 
     for (i=0; i<9; i++) {
         printf("\nM.data[%d] = %g", i, M.data[i]);

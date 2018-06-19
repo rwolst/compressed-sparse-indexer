@@ -6,6 +6,8 @@ from contexttimer import Timer
 
 from csindexer import indexer
 
+N_THREADS = 1
+
 # Build small matrix
 matrix = [[ 0.  ,  0.  ,  0.45],
           [ 0.22,  0.74,  0.87],
@@ -64,7 +66,8 @@ def test_get_small():
                           row_vector_small[sort_idx], 
                           col_vector_small[sort_idx],
                           data_cy,
-                          'get')
+                          'get',
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -106,7 +109,8 @@ def test_get_large():
                           np.array(row_vector_large[sort_idx]), 
                           np.array(col_vector_large[sort_idx]),
                           data_cy,
-                          'get')
+                          'get',
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -149,7 +153,8 @@ def test_add_small():
                           row_vector_small[sort_idx], 
                           col_vector_small[sort_idx],
                           data_vector_small[sort_idx],
-                          'add')
+                          'add',
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
@@ -196,7 +201,8 @@ def test_add_large():
                           row_vector_large[sort_idx], 
                           col_vector_large[sort_idx],
                           data_vector_large[sort_idx],
-                          'add')
+                          'add',
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
