@@ -13,7 +13,7 @@ ext_modules += [
                      "./csindexer/indexer_c.c",
                      "./csindexer/interpolation_search.c"],
             include_dirs=[numpy.get_include()],
-            extra_compile_args=["-Ofast"],
+            extra_compile_args=["-Ofast", "-lm", "-fopenmp"],
             extra_link_args=["-fopenmp"],
             language='c',
             libraries=[]

@@ -19,7 +19,8 @@ typedef struct {
 } COO;
 
 void compressed_sparse_index(CS *M, COO *indexer,
-                             void (*f)(double *, double *), int search_type);
+                             void (*f)(double *, double *),
+                             int search_type, int n_threads);
 
 void get(double *x, double *y);
 void add(double *x, double *y);

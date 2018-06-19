@@ -9,6 +9,7 @@ from csindexer import indexer as csindexer
 
 SORT = False
 DEBUG = False  # Saves the large objects to csv for testing in C.
+N_THREADS = 8
 
 @pytest.fixture(scope="module")
 def small_matrix():
@@ -36,7 +37,7 @@ def small_matrix():
 @pytest.fixture(scope="module")
 def large_matrix():
     # Build large matrix
-    matrix = sp.sparse.rand(400000, 400000, density=0.001)
+    matrix = sp.sparse.rand(40000, 40000, density=0.001)
 
     M = {}
     M['CSR'] = sp.sparse.csr_matrix(matrix)
@@ -100,7 +101,8 @@ def test_get_small(SEARCH_TYPE, small_matrix):
                           indexer['col'][sort_idx],
                           data_cy,
                           'get',
-                          SEARCH_TYPE)
+                          SEARCH_TYPE,
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -150,7 +152,8 @@ def test_get_large(SEARCH_TYPE, large_matrix):
                           np.array(indexer['col'][sort_idx]),
                           data_cy,
                           'get',
-                          SEARCH_TYPE)
+                          SEARCH_TYPE,
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -201,7 +204,8 @@ def test_add_small(SEARCH_TYPE, small_matrix):
                           indexer['col'][sort_idx],
                           indexer['data'][sort_idx],
                           'add',
-                          SEARCH_TYPE)
+                          SEARCH_TYPE,
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
@@ -257,7 +261,8 @@ def test_add_large(SEARCH_TYPE, large_matrix):
                           indexer['col'][sort_idx],
                           indexer['data'][sort_idx],
                           'add',
-                          SEARCH_TYPE)
+                          SEARCH_TYPE,
+                          N_THREADS)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)

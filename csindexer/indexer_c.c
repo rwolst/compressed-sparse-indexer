@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <omp.h>
+#include <math.h>
 #include "indexer_c.h"
 #include "interpolation_search.h"
 #include "csv.h"
@@ -54,7 +55,8 @@ int get_first_occurence(int arr[], int n, int x, int *depth, int search_type) {
 }
 
 void compressed_sparse_index(CS *M, COO *indexer,
-                             void (*f)(double *, double *), int search_type) {
+                             void (*f)(double *, double *), int search_type,
+                             int n_threads) {
     /*
     Note we can maybe split the indexer into separate chunks and
     perform our operations in parallel over the chunks.
@@ -66,11 +68,6 @@ void compressed_sparse_index(CS *M, COO *indexer,
         f: A function taking f(&M->data[x], &index->data[y]) and applies something to them.
     */
     int index_pointer = 0;
-    int idx;
-    int depth;
-    int start;
-    int n;
-    int x;
 
     int *axis0;
     int *axis1;
@@ -87,11 +84,20 @@ void compressed_sparse_index(CS *M, COO *indexer,
 
     // Loop over all values of our indexer
     // printf("\n\tNew indexing");
-    // #pragma omp parallel for
+    // Only worth openMP for complex f value otherwise just makes it slower.
+    omp_set_num_threads(n_threads);
+
+    #pragma omp parallel for schedule(dynamic) shared(M, indexer)
     for (index_pointer=0; index_pointer<indexer->nnz; index_pointer++) {
         // If we can guarantee all values in indexer exist in M then we can
         // use our binary search for the current column value
         //     axis1[index_pointer].
+        int idx;
+        int depth;
+        int start;
+        int n;
+        int x;
+
         start = M->indptr[axis0[index_pointer]];
         n = M->indptr[axis0[index_pointer]+1] - start;
         x = axis1[index_pointer];
@@ -99,29 +105,42 @@ void compressed_sparse_index(CS *M, COO *indexer,
 
         // Now apply our function at the correct index.
         (*f)(&(M->data[start+idx]), &(indexer->data[index_pointer]));
+        // indexer->data[index_pointer] = M->data[start+idx];
     }
 }
 
 void get(double *x, double *y) {
     // Copy x value into y
-    *y = *x;
+    double temp;
+    #pragma omp atomic read
+    temp = *x;
+
+    #pragma omp atomic write
+    *y = temp;
 }
 
 void set(double *x, double *y) {
     // Copy y value into x
     // Note that sometimes the same entry gets multiple copies
-    *x = *y;
+    double temp;
+    #pragma omp atomic read
+    temp = *y;
+
+    #pragma omp atomic write
+    *x = temp;
 }
 
 void add(double *x, double *y) {
     // Add x value into y
-    *x = *x + *y;
+    #pragma omp atomic
+    *x += *y;
 }
 
 int example_get() {
     // A small example to check we can get from a CS matrix
     int i;
     int search_type = 0;
+    int n_threads = 1;
 
     // Use M = [[ 0.  ,  0.  ,  0.45],
     //          [ 0.22,  0.74,  0.87],
@@ -174,7 +193,7 @@ int example_get() {
     indexer.row[5] = 4; indexer.col[5] = 1;
     indexer.row[6] = 4; indexer.col[6] = 1;
 
-    compressed_sparse_index(&M, &indexer, get, search_type);
+    compressed_sparse_index(&M, &indexer, get, search_type, n_threads);
 
     for (i=0; i<7; i++) {
         printf("\nindexer.data[%d] = %g", i, indexer.data[i]);
@@ -194,6 +213,7 @@ int example_add() {
     // A small example to check we can get from a CS matrix
     int i;
     int search_type = 0;
+    int n_threads = 1;
 
     // Use M = [[ 0.1  ,  0.2  ,  0.3],
     //          [ 0.4  ,  0.5  ,  0.6],
@@ -233,7 +253,7 @@ int example_add() {
     indexer.row[0] = 1; indexer.col[0] = 2; indexer.data[0] = 0.5;
     indexer.row[1] = 2; indexer.col[1] = 2; indexer.data[1] = 1.5;
 
-    compressed_sparse_index(&M, &indexer, add, search_type);
+    compressed_sparse_index(&M, &indexer, add, search_type, n_threads);
 
     for (i=0; i<9; i++) {
         printf("\nM.data[%d] = %g", i, M.data[i]);
@@ -257,6 +277,7 @@ int python_debugger() {
     // Load the CSV files and store in correct objects.
     int i, rows, cols;
     char fname[128];
+    int n_threads = 1;
 
     // Index object.
     COO indexer;
@@ -332,7 +353,7 @@ int python_debugger() {
     M.data = arr;
 
     // Run the program.
-    compressed_sparse_index(&M, &indexer, get, 2);
+    compressed_sparse_index(&M, &indexer, get, 2, n_threads);
 
     // Free indexer.
     free(indexer.row);
