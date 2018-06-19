@@ -65,8 +65,8 @@ void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *))
 
     // Can parallelise the below for loop.
     // printf("\n\tNew indexing");
-    #pragma omp parallel
-    #pragma omp for
+    omp_set_num_threads(8);
+    #pragma omp parallel for
     for (i=0; i<total_rows; i++) {
         process_row(row_start[i], M, indexer, f, axis0, axis1);
     }
@@ -102,7 +102,7 @@ void process_row(int index_pointer, CS *M, COO *indexer, void (*f)(double *,
 
             // Only increment the index pointer
             index_pointer += 1;
-            
+
             // Check for a new axis in the COO indexer
             if (index_pointer >= indexer->nnz) {
                 break;
@@ -113,7 +113,7 @@ void process_row(int index_pointer, CS *M, COO *indexer, void (*f)(double *,
         } else if (M->indices[sparse_pointer] > axis1[index_pointer]) {
             // Need to increment index pointer
             index_pointer += 1;
-            
+
             // Check for a new axis in the COO indexer
             if (index_pointer >= indexer->nnz) {
                 break;
