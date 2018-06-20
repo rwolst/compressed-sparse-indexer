@@ -1,3 +1,6 @@
+#ifndef CSINDEXER_INDEXER_C_H_
+#define CSINDEXER_INDEXER_C_H_
+
 typedef struct {
     // A compressed sparse matrix (can be CSR or CSC)
     int CSR;  // Whether sparse matrix is CSR (otherwise we assume it is CSC)
@@ -15,8 +18,13 @@ typedef struct {
     int nnz;
 } COO;
 
-void compressed_sparse_index(CS *M, COO *indexer, void (*f)(double *, double *),
+void compressed_sparse_index_sorted(CS *M, COO *indexer, void (*f)(double *, double *),
                              int n_threads);
- 
+void compressed_sparse_index(CS *M, COO *indexer,
+                             void (*f)(double *, double *),
+                             int search_type, int n_threads);
+
 void get(double *x, double *y);
 void add(double *x, double *y);
+
+#endif  // CSINDEXER_INDEXER_C_H_

@@ -10,10 +10,11 @@ ext_modules = []
 ext_modules += [
         Extension("csindexer.indexer",
             sources=["./csindexer/indexer.pyx",
-                     "./csindexer/indexer_c.c"],
+                     "./csindexer/indexer_c.c",
+                     "./csindexer/interpolation_search.c"],
             include_dirs=[numpy.get_include()],
-            extra_compile_args=["-Ofast", "-fopenmp"],
-            extra_link_args=['-fopenmp'],
+            extra_compile_args=["-Ofast", "-lm", "-fopenmp"],
+            extra_link_args=["-fopenmp"],
             language='c',
             libraries=[]
             )
