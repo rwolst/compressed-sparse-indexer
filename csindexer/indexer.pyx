@@ -23,13 +23,14 @@ cdef extern from 'indexer_c.h':
     void get(double *x, double *y);
     void add(double *x, double *y);
 
-def apply(M, 
-          np.int32_t[:] row_vector, 
+def apply(M,
+          np.int32_t[:] row_vector,
           np.int32_t[:] col_vector,
           np.float64_t[:] data_vector,
           operation,
           search_type,
-          n_threads):
+          n_threads,
+          debug):
     """Gets M[row_vector, col_vector].
     If M is a CSR matrix, then 
         indices = [row_vector, col_vector]
@@ -98,4 +99,5 @@ def apply(M,
         if operation == 'add':
             compressed_sparse_index(&M_CS, &indexer, add, search_type_int,
                                     n_threads)
-    print("\tCython internal time: %s" % t.elapsed)
+    if debug:
+        print("\tCython internal time: %s" % t.elapsed)

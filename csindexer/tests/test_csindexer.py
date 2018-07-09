@@ -48,8 +48,6 @@ def large_matrix():
     idx = np.random.choice(matrix.nnz, 100000, replace=True)
     indexer['row'] = matrix.row[idx]
     indexer['col'] = matrix.col[idx]
-    indices_large = np.concatenate([indexer['row'][:, None],
-                                    indexer['col'][:, None]], axis=1)
     indexer['data'] = np.random.rand(idx.size).astype(np.float64)
 
     if DEBUG:
@@ -102,7 +100,8 @@ def test_get_small(SEARCH_TYPE, small_matrix):
                           data_cy,
                           'get',
                           SEARCH_TYPE,
-                          N_THREADS)
+                          N_THREADS,
+                            True)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -153,7 +152,8 @@ def test_get_large(SEARCH_TYPE, large_matrix):
                           data_cy,
                           'get',
                           SEARCH_TYPE,
-                          N_THREADS)
+                          N_THREADS,
+                            True)
             print('\tCython function time: %s' % (t.elapsed - start))
 
             # Unsort data_cy
@@ -162,7 +162,8 @@ def test_get_large(SEARCH_TYPE, large_matrix):
         print('\tCython time to get: %s' % t.elapsed)
 
         with Timer() as t:
-            data_py = np.squeeze(np.array(M[key][indexer['row'][sort_idx], indexer['col'][sort_idx]]))
+            data_py = np.squeeze(np.array(M[key][indexer['row'][sort_idx],
+                                                 indexer['col'][sort_idx]]))
             data_py = data_py[unsort_idx]
         print('\tPython time to get: %s' % t.elapsed)
 
@@ -205,7 +206,8 @@ def test_add_small(SEARCH_TYPE, small_matrix):
                           indexer['data'][sort_idx],
                           'add',
                           SEARCH_TYPE,
-                          N_THREADS)
+                          N_THREADS,
+                            True)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
@@ -253,7 +255,7 @@ def test_add_large(SEARCH_TYPE, large_matrix):
             if not SORT:
                 sort_idx = np.arange(indexer['row'].size)
         print('\tLexsort time: %s' % t.elapsed)
-        
+
         with Timer() as t:
             start = t.elapsed
             csindexer.apply(M_copy_cy, 
@@ -262,7 +264,8 @@ def test_add_large(SEARCH_TYPE, large_matrix):
                           indexer['data'][sort_idx],
                           'add',
                           SEARCH_TYPE,
-                          N_THREADS)
+                          N_THREADS,
+                            True)
             print('\tCython function time: %s' % (t.elapsed - start))
 
         print('\tCython time to add: %s' % t.elapsed)
