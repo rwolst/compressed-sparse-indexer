@@ -1,6 +1,6 @@
 #setup.py
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 from Cython.Distutils import build_ext
 import numpy
 
@@ -25,6 +25,8 @@ setup(
   name="csindexer",
   packages=["csindexer"],
   cmdclass={'build_ext': build_ext},
-  ext_modules=ext_modules
+  ext_modules=ext_modules,
+  setup_requires=["pytest-runner"],
+  tests_require=["pytest"]
 )
 
