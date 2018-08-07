@@ -18,6 +18,8 @@ typedef struct {
     int nnz;
 } COO;
 
+void compressed_sparse_index_sorted(CS *M, COO *indexer, void (*f)(double *, double *),
+                             int n_threads);
 void compressed_sparse_index(CS *M, COO *indexer,
                              void (*f)(double *, double *),
                              int search_type, int n_threads);

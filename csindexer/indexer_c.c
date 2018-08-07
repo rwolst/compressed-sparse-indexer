@@ -54,6 +54,132 @@ int get_first_occurence(int arr[], int n, int x, int *depth, int search_type) {
     }
 }
 
+void process_row(int index_pointer, CS *M, COO *indexer, void (*f)(double *,
+                 double *), int *axis0, int *axis1) {
+    int sparse_pointer = M->indptr[axis0[index_pointer]];
+    // printf("\n\t\t(Index pointer, Sparse pointer): (%d, %d)", index_pointer, sparse_pointer);
+
+    int new_axis0 = 0;
+
+    // Now choose between incrementing index_pointer and the sparse_pointer based on what values
+    // we get.
+    while ((new_axis0 == 0) & 
+           (sparse_pointer < M->indptr[axis0[index_pointer] + 1])) {
+        /* While both the indexer and M are on the same axis
+           We begin by pointing at the top of this axis of
+           our vectors and gradually move down them. In the event of 
+           an equality we apply our function and 
+           increment the INDEXING VECTOR pointer, not the sparse
+           vector pointer, as there can be multiple values that 
+           are the same in the indexing vector but not the sparse row
+           column vector (only 1 column can appear in 1 row!). */
+
+        if (M->indices[sparse_pointer] == axis1[index_pointer]) {
+            // Apply the function to their data
+            (*f)(&(M->data[sparse_pointer]), &(indexer->data[index_pointer]));
+
+            // Only increment the index pointer
+            index_pointer += 1;
+
+            // Check for a new axis in the COO indexer
+            if (index_pointer >= indexer->nnz) {
+                break;
+            }
+            if (axis0[index_pointer] != axis0[index_pointer-1]) {
+                new_axis0 = 1;
+            }
+        } else if (M->indices[sparse_pointer] > axis1[index_pointer]) {
+            // Need to increment index pointer
+            index_pointer += 1;
+
+            // Check for a new axis in the COO indexer
+            if (index_pointer >= indexer->nnz) {
+                break;
+            }
+            if (axis0[index_pointer] != axis0[index_pointer-1]) {
+                new_axis0 = 1;
+            }
+        } else {
+            // Need to increment sparse pointer
+            sparse_pointer += 1;
+        }
+    }
+}
+
+void compressed_sparse_index_sorted(CS *M, COO *indexer,
+                             void (*f)(double *, double *),
+                             int n_threads) {
+    /*
+    Note we can maybe split the indexer into separate chunks and
+    perform our operations in parallel over the chunks.
+    Inputs:
+        M: A compressed sparse matrix in CSC or CSR form to get/set etc.
+        index: A sparse matrix in COO form containing index into M.
+               If M is CSC it is assumed to be ordered by (row, column) and
+               if M is CSR it is assumed to be ordered by (column, row).
+        f: A function taking f(&M->data[x], &index->data[y]) and applies something to them.
+    */
+    int index_pointer = 0;
+
+    int *axis0;
+    int *axis1;
+
+    // Create view onto rows/cols of the COO matrx to make updates independent of
+    // whether M is stored as a CSC or CSR.
+    if (M->CSR == 1) {
+        axis0 = indexer->row;
+        axis1 = indexer->col;
+    } else {
+        axis1 = indexer->row;
+        axis0 = indexer->col;
+    }
+
+    // Loop over all values of our indexer.
+    // Each of our threads should read the next row of a queue and then
+    // process that row themselves.
+
+    // Get where the rows start in indexer.
+    // Unfortunately requires two passes over indexer, first find total rows
+    // then find where they start.
+    int i;
+    int prev_row = -1;
+    int total_rows = 0;
+    for (i=0; i<indexer->nnz; i++) {
+        if (axis0[i] != prev_row) {
+            // We have a new row (or column).
+            total_rows += 1;
+            prev_row = axis0[i];
+        }
+    }
+    // printf("\nTotal rows: %d", total_rows);
+    // printf("\n");
+    int *row_start = malloc(total_rows*sizeof(int));
+    prev_row = -1;
+    total_rows = 0;
+    for (i=0; i<indexer->nnz; i++) {
+        if (axis0[i] != prev_row) {
+            // We have a new row (or column).
+            row_start[total_rows] = i;
+            total_rows += 1;
+            prev_row = axis0[i];
+        }
+    }
+
+
+    // Can parallelise the below for loop.
+    // printf("\n\tNew indexing");
+    omp_set_num_threads(n_threads);
+    #pragma omp parallel for
+    for (i=0; i<total_rows; i++) {
+        process_row(row_start[i], M, indexer, f, axis0, axis1);
+    }
+
+
+    free(row_start);
+}
+
+
+
 void compressed_sparse_index(CS *M, COO *indexer,
                              void (*f)(double *, double *), int search_type,
                              int n_threads) {
@@ -83,7 +209,6 @@ void compressed_sparse_index(CS *M, COO *indexer,
     }
 
     // Loop over all values of our indexer
-    // printf("\n\tNew indexing");
     // Only worth openMP for complex f value otherwise just makes it slower.
     omp_set_num_threads(n_threads);
 
@@ -193,6 +318,7 @@ int example_get() {
     indexer.row[5] = 4; indexer.col[5] = 1;
     indexer.row[6] = 4; indexer.col[6] = 1;
 
+    compressed_sparse_index_sorted(&M, &indexer, get, n_threads);
     compressed_sparse_index(&M, &indexer, get, search_type, n_threads);
 
     for (i=0; i<7; i++) {
@@ -253,6 +379,7 @@ int example_add() {
     indexer.row[0] = 1; indexer.col[0] = 2; indexer.data[0] = 0.5;
     indexer.row[1] = 2; indexer.col[1] = 2; indexer.data[1] = 1.5;
 
+    compressed_sparse_index_sorted(&M, &indexer, add, n_threads);
     compressed_sparse_index(&M, &indexer, add, search_type, n_threads);
 
     for (i=0; i<9; i++) {

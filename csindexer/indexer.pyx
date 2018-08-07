@@ -16,6 +16,8 @@ cdef extern from 'indexer_c.h':
         double *data
         int nnz
 
+    void compressed_sparse_index_sorted(CS *M, COO *indexer, void (*f)(double *, double *),
+                                 int n_threads);
     void compressed_sparse_index(CS *M, COO *indexer, 
                                  void (*f)(double *, double *),
                                  int search_type, int n_threads);
@@ -68,6 +70,8 @@ def apply(M,
             search_type_int = 1
         elif search_type == 'joint':
             search_type_int = 2
+        elif search_type == 'sorted':
+            search_type_int = -1
         else:
             raise Exception("Unrecognised search_type: %s" % search_type)
 
@@ -94,10 +98,16 @@ def apply(M,
 
         # Run our function with the get or add method
         if operation == 'get':
-            compressed_sparse_index(&M_CS, &indexer, get, search_type_int,
-                                    n_threads)
+            if search_type_int == -1:
+                compressed_sparse_index_sorted(&M_CS, &indexer, get, n_threads)
+            else:
+                compressed_sparse_index(&M_CS, &indexer, get, search_type_int,
+                                        n_threads)
         if operation == 'add':
-            compressed_sparse_index(&M_CS, &indexer, add, search_type_int,
-                                    n_threads)
+            if search_type_int == -1:
+                compressed_sparse_index_sorted(&M_CS, &indexer, add, n_threads)
+            else:
+                compressed_sparse_index(&M_CS, &indexer, add, search_type_int,
+                                        n_threads)
     if debug:
         print("\tCython internal time: %s" % t.elapsed)

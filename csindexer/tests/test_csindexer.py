@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import scipy as sp
 import scipy.sparse
 from contexttimer import Timer
@@ -7,7 +6,6 @@ import pytest
 
 from csindexer import indexer as csindexer
 
-SORT = False
 DEBUG = False  # Saves the large objects to csv for testing in C.
 N_THREADS = 8
 
@@ -67,7 +65,7 @@ def large_matrix():
     return out
 
 
-@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint'])
+@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint', 'sorted'])
 def test_get_small(SEARCH_TYPE, small_matrix):
     print('\nGet small (%s):' % SEARCH_TYPE)
     M = small_matrix['M']
@@ -78,16 +76,17 @@ def test_get_small(SEARCH_TYPE, small_matrix):
         print('\n%s matrix' % key)
 
         with Timer() as t:
-            if key == 'CSR':
-                # Sort indices according to row first
-                sort_idx = np.lexsort((indexer['col'], indexer['row']))
+            if SEARCH_TYPE == 'sorted':
+                if key == 'CSR':
+                    # Sort indices according to row first
+                    sort_idx = np.lexsort((indexer['col'], indexer['row']))
+                else:
+                    # Sort indices according to col first
+                    sort_idx = np.lexsort((indexer['row'], indexer['col']))
             else:
-                # Sort indices according to col first
-                sort_idx = np.lexsort((indexer['row'], indexer['col']))
-
-            # Technically don;t need to sort with binary search.
-            if not SORT:
+                # Technically don;t need to sort with binary search.
                 sort_idx = np.arange(indexer['row'].size)
+
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
@@ -119,7 +118,7 @@ def test_get_small(SEARCH_TYPE, small_matrix):
         assert(np.all((data_py - true)**2 < 1e-6))
 
 
-@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint'])
+@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint', 'sorted'])
 def test_get_large(SEARCH_TYPE, large_matrix):
     print('\nGet large (%s):' % SEARCH_TYPE)
     M = large_matrix['M']
@@ -129,16 +128,17 @@ def test_get_large(SEARCH_TYPE, large_matrix):
         print('\n%s matrix' % key)
 
         with Timer() as t:
-            if key == 'CSR':
-                # Sort indices according to row first
-                sort_idx = np.lexsort((indexer['col'], indexer['row']))
+            if SEARCH_TYPE == 'sorted':
+                if key == 'CSR':
+                    # Sort indices according to row first
+                    sort_idx = np.lexsort((indexer['col'], indexer['row']))
+                else:
+                    # Sort indices according to col first
+                    sort_idx = np.lexsort((indexer['row'], indexer['col']))
             else:
-                # Sort indices according to col first
-                sort_idx = np.lexsort((indexer['row'], indexer['col']))
-
-            # Technically don;t need to sort with binary search.
-            if not SORT:
+                # Technically don;t need to sort with binary search.
                 sort_idx = np.arange(indexer['row'].size)
+
             unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
@@ -171,7 +171,7 @@ def test_get_large(SEARCH_TYPE, large_matrix):
     assert(np.all((data_cy - data_py)**2 < 1e-6))
 
 
-@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint'])
+@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint', 'sorted'])
 def test_add_small(SEARCH_TYPE, small_matrix):
     print('\nAdd small (%s):' % SEARCH_TYPE)
     M = small_matrix['M']
@@ -187,15 +187,18 @@ def test_add_small(SEARCH_TYPE, small_matrix):
         M_copy_py = M[key].copy()
 
         with Timer() as t:
-            if key == 'CSR':
-                # Sort indices according to row first
-                sort_idx = np.lexsort((indexer['col'], indexer['row']))
+            if SEARCH_TYPE == 'sorted':
+                if key == 'CSR':
+                    # Sort indices according to row first
+                    sort_idx = np.lexsort((indexer['col'], indexer['row']))
+                else:
+                    # Sort indices according to col first
+                    sort_idx = np.lexsort((indexer['row'], indexer['col']))
             else:
-                # Sort indices according to col first
-                sort_idx = np.lexsort((indexer['row'], indexer['col']))
-            # Technically don;t need to sort with binary search.
-            if not SORT:
+                # Technically don;t need to sort with binary search.
                 sort_idx = np.arange(indexer['row'].size)
+
+            unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
         with Timer() as t:
@@ -213,27 +216,16 @@ def test_add_small(SEARCH_TYPE, small_matrix):
         print('\tCython time to add: %s' % t.elapsed)
 
         with Timer() as t:
-            #import pdb; pdb.set_trace()
-            df = pd.DataFrame(np.concatenate([indexer['row'][:,None], 
-                                              indexer['col'][:,None], 
-                                              indexer['data'][:,None]], axis=1), 
-                    columns=['Row', 'Col', 'Data'])
-            df = df.groupby(['Row', 'Col']).sum()
-            df_row = df.index.get_level_values('Row').astype(np.int32)
-            df_col = df.index.get_level_values('Col').astype(np.int32)
-            df_data = df['Data']
-        print('\tPandas groupby time: %s' % t.elapsed)
+            idx_coo = sp.sparse.coo_matrix((indexer['data'], (indexer['row'], indexer['col'])))
+            M_copy_py += idx_coo
 
-        with Timer() as t:
-            M_copy_py[df_row, df_col] = M_copy_py[df_row, df_col] + df_data.as_matrix()
-
-        print('\tPython time to add: %s' % t.elapsed)
+        print('\tPython/scipy time to add: %s' % t.elapsed)
 
         assert(np.all((M_copy_cy.data - true[key])**2 < 1e-6))
         assert(np.all((M_copy_py.data - true[key])**2 < 1e-6))
 
 
-@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint'])
+@pytest.mark.parametrize("SEARCH_TYPE", ['binary', 'interpolation', 'joint', 'sorted'])
 def test_add_large(SEARCH_TYPE, large_matrix):
     print('\nAdd large (%s):' % SEARCH_TYPE)
     M = large_matrix['M']
@@ -245,15 +237,18 @@ def test_add_large(SEARCH_TYPE, large_matrix):
         M_copy_py = M[key].copy()
 
         with Timer() as t:
-            if key == 'CSR':
-                # Sort indices according to row first
-                sort_idx = np.lexsort((indexer['col'], indexer['row']))
+            if SEARCH_TYPE == 'sorted':
+                if key == 'CSR':
+                    # Sort indices according to row first
+                    sort_idx = np.lexsort((indexer['col'], indexer['row']))
+                else:
+                    # Sort indices according to col first
+                    sort_idx = np.lexsort((indexer['row'], indexer['col']))
             else:
-                # Sort indices according to col first
-                sort_idx = np.lexsort((indexer['row'], indexer['col']))
-            # Technically don;t need to sort with binary search.
-            if not SORT:
+                # Technically don;t need to sort with binary search.
                 sort_idx = np.arange(indexer['row'].size)
+
+            unsort_idx = np.argsort(sort_idx)
         print('\tLexsort time: %s' % t.elapsed)
 
         with Timer() as t:
@@ -271,21 +266,10 @@ def test_add_large(SEARCH_TYPE, large_matrix):
         print('\tCython time to add: %s' % t.elapsed)
 
         with Timer() as t:
-            #import pdb; pdb.set_trace()
-            df = pd.DataFrame(np.concatenate([indexer['row'][:,None],
-                                              indexer['col'][:,None],
-                                              indexer['data'][:,None]], axis=1),
-                    columns=['Row', 'Col', 'Data'])
-            df = df.groupby(['Row', 'Col']).sum()
-            df_row = df.index.get_level_values('Row').astype(np.int32)
-            df_col = df.index.get_level_values('Col').astype(np.int32)
-            df_data = df['Data']
-        print('\tPandas groupby time: %s' % t.elapsed)
+            idx_coo = sp.sparse.coo_matrix((indexer['data'], (indexer['row'], indexer['col'])))
+            M_copy_py += idx_coo
 
-        with Timer() as t:
-            M_copy_py[df_row, df_col] = M_copy_py[df_row, df_col] + df_data.as_matrix()
-
-        print('\tPython time to add: %s' % t.elapsed)
+        print('\tPython/scipy time to add: %s' % t.elapsed)
 
         assert(np.all((M_copy_cy.data - M_copy_py.data)**2 < 1e-6))
         assert(np.all((M_copy_cy.indptr - M_copy_py.indptr)**2 < 1e-6))
