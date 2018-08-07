@@ -168,7 +168,9 @@ void compressed_sparse_index_sorted(CS *M, COO *indexer,
 
     // Can parallelise the below for loop.
     // printf("\n\tNew indexing");
-    omp_set_num_threads(n_threads);
+    if (n_threads != -1) {
+        omp_set_num_threads(n_threads);
+    }
     #pragma omp parallel for
     for (i=0; i<total_rows; i++) {
         process_row(row_start[i], M, indexer, f, axis0, axis1);
@@ -210,7 +212,9 @@ void compressed_sparse_index(CS *M, COO *indexer,
 
     // Loop over all values of our indexer
     // Only worth openMP for complex f value otherwise just makes it slower.
-    omp_set_num_threads(n_threads);
+    if (n_threads != -1) {
+        omp_set_num_threads(n_threads);
+    }
 
     #pragma omp parallel for schedule(dynamic) shared(M, indexer)
     for (index_pointer=0; index_pointer<indexer->nnz; index_pointer++) {

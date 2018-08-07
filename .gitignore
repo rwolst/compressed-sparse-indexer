@@ -2,3 +2,4 @@ env/*
 .pytest_cache/*
 csindexer/tests/__pycache__/*
 *.swp
+README.html
