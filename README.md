@@ -25,6 +25,9 @@ and running
     python3 -m pytest
 
 ## Usage
+All experiments can be run through the `main.py` end point.
+
+### Examples
 Below we specify we want `n` (the size of both rows and columns) on the x-axis
 against time taken and that we want separate graphs for each `search_type`:
 
@@ -37,10 +40,14 @@ The other variables are constant.
 
     python3 main.py n --n-threads 1 --nnz 1000 --n-indexers 10000 --n 50 100  500 1000 5000 10000 50000 100000 1000000 --sort 0 --sparse-format CSR --operation get --search-type binary interpolation joint scipy
 
+<img src="figures/fig1.png" width="400" height="400">
+
 In the next example we ensure that our indexer is sorted (`--sort 1`) which
 allows us to test the optimised `--search-type sorted` algorithm as well.
 
     python3 main.py n --n-threads 1 --nnz 100000 --n-indexers 10000 --n 1000 5000 10000 50000 100000 1000000 --sort 1 --sparse-format CSR --operation get --search-type binary interpolation joint scipy sorted
+
+<img src="figures/fig2.png" width="400" height="400">
 
 The final example shows that `scipy` seems to have a better complexity
 'constant' with respect to `n-indexers` but grows at a faster rate with respect
@@ -48,13 +55,19 @@ to `n`.
 
     python3 main.py n --n-threads 1 --nnz 10000 --n-indexers 100000 --n 1000 5000 10000 50000 100000 1000000 --sort 1 --sparse-format CSR --operation get --search-type binary interpolation joint scipy sorted
 
+<img src="figures/fig3.png" width="400" height="400">
+
 Finally for an unsorted version with larger `n-indexers` the `scipy` method
 appears to dominate.
 
     python3 main.py n --n-threads 1 --nnz 10000 --n-indexers 100000 --n 1000 5000 10000 50000 100000 1000000 --sort 0 --sparse-format CSR --operation get --search-type binary interpolation joint scipy
+
+<img src="figures/fig4.png" width="400" height="400">
 
 although this is probably because it is able to use more threads (`n_threads`)
 currently only applies to the algorithms in this repository. In fact, this
 seems to make sense when we increase the allowed threads
 
     python3 main.py n --n-threads -1 --nnz 10000 --n-indexers 100000 --n 1000 5000 10000 50000 100000 1000000 --sort 0 --sparse-format CSR --operation get --search-type binary interpolation joint scipy
+
+<img src="figures/fig5.png" width="400" height="400">

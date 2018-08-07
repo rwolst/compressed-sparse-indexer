@@ -77,6 +77,13 @@ parser.add_argument('--operation',
                     nargs='+',
                     default=['get'],
                     help="Whether to use a get or add operation.")
+parser.add_argument('--save',
+                    action='store_true',
+                    help="Whether to save the plot to ./figures.")
+parser.add_argument('--figure-name',
+                    type=str,
+                    default='my_figure.png',
+                    help="What to call the plot.")
 parser.add_argument('--debug',
                     action='store_true',
                     help="Print the configuration when creating model.")
@@ -222,7 +229,6 @@ if __name__ == "__main__":
 
     dependent = config['dependent']
     variables.remove(dependent)
-    print(variables)
 
     models = list(itertools.product(*[config[i] for i in variables]))
 
@@ -272,5 +278,9 @@ if __name__ == "__main__":
                             [config[i] for i in unused_variables]))
     title = "Sparse indexing %s vs time (%s)" % (dependent, models_title)
     plt.title(title)
+    if config['save']:
+        fname = project_dir + '/figures/' + config['figure_name']
+        plt.savefig(fname)
+
     plt.show()
 

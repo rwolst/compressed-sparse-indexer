@@ -3,3 +3,9 @@ env/*
 csindexer/tests/__pycache__/*
 *.swp
 README.html
+*.png
+!figures/fig1.png
+!figures/fig2.png
+!figures/fig3.png
+!figures/fig4.png
+!figures/fig5.png
