@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     # Get the list of separate models to be plotted.
     if config['n'] != []:
-        # Override the rows and cols using n (so the sparse matrix is square.
+        # Override the rows and cols using n (so the sparse matrix is square).
         variables = ['sort', 'n_threads', 'sparse_format', 'n',
                      'nnz', 'n_indexers', 'search_type', 'operation']
     else:
