@@ -91,3 +91,10 @@ we increase the allowed threads
         --search-type binary interpolation joint scipy
 
 <img src="figures/fig5.png" width="1200" height="1200">
+
+An interesting experiment that shows how increasing threads can go from worse
+than Scipy to better than it
+
+    python3 main.py n_threads --n-threads 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 --nnz 1000000 --n-indexers 10000000 --n 10000 --sort 0 --sparse-format CSR --operation get --search-type binary interpolation joint scipy
+
+<img src="figures/fig6.png" width="1200" height="1200">

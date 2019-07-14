@@ -93,8 +93,9 @@ parser.add_argument('--random-seed',
                     help="Value of random seed")
 
 FLAGS, unparsed = parser.parse_known_args()
-
 np.random.seed(FLAGS.random_seed)
+config = FLAGS.__dict__.copy()
+
 
 def index_time(sort, n_threads, sparse_format, rows, cols, nnz, n_indexers,
                search_type, operation, debug):
@@ -213,7 +214,6 @@ def index_time(sort, n_threads, sparse_format, rows, cols, nnz, n_indexers,
 
 
 if __name__ == "__main__":
-    config = FLAGS.__dict__.copy()
 
     # Dependent variable gets plotted on x-axis, all others are separate lines
     # on the plot.
